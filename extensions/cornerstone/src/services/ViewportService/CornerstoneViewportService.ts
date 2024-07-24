@@ -594,6 +594,15 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
     }
 
     this._handleOverlays(viewport);
+    viewport.element.addEventListener(csEnums.Events.STACK_VIEWPORT_NEW_STACK, evt => {
+      const { element } = evt.detail;
+
+      if (element !== viewport.element) {
+        return;
+      }
+
+      csToolsUtils.stackContextPrefetch.enable(element);
+    });
 
     return viewport.setStack(imageIds, initialImageIndexToUse).then(() => {
       viewport.setProperties({ ...properties });
