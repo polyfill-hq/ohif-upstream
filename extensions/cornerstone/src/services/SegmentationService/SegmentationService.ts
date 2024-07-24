@@ -1139,7 +1139,7 @@ class SegmentationService extends PubSubService {
     segments: Segment[],
     viewportId: string,
     animationLength: number,
-    segmentationRepresentation: cstTypes.SegmentRepresentation
+    segmentationRepresentation: cstTypes.SegmentationRepresentation
   ) {
     const newSegmentSpecificConfig = {
       [segmentIndex]: {
