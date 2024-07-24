@@ -73,6 +73,20 @@ const commandsModule = ({ servicesManager, commandsManager, extensionManager }: 
     return toolGroupIds;
   }
 
+  function _getMatchedViewportIds() {
+    const { viewportMatchDetails } = hangingProtocolService.getMatchDetails();
+    const viewportIds = [];
+    viewportMatchDetails.forEach(viewport => {
+      const { viewportOptions } = viewport;
+      const { viewportId } = viewportOptions;
+      if (viewportIds.indexOf(viewportId) === -1) {
+        viewportIds.push(viewportId);
+      }
+    });
+
+    return viewportIds;
+  }
+
   function _getAnnotationsSelectedByToolNames(toolNames) {
     return toolNames.reduce((allAnnotationUIDs, toolName) => {
       const annotationUIDs =
@@ -159,20 +173,16 @@ const commandsModule = ({ servicesManager, commandsManager, extensionManager }: 
         { label: `Segmentation ${currentSegmentations.length + 1}` }
       );
 
-      // Add Segmentation to all toolGroupIds in the viewer
-      const toolGroupIds = _getMatchedViewportsToolGroupIds();
-      const representationType = LABELMAP;
+      const viewportIds = _getMatchedViewportIds();
 
-      for (const toolGroupId of toolGroupIds) {
+      for (const viewportId of viewportIds) {
         const hydrateSegmentation = true;
-        await segmentationService.addSegmentationRepresentationToToolGroup(
-          toolGroupId,
+        await segmentationService.addSegmentationRepresentationToViewport(
+          viewportId,
           segmentationId,
-          hydrateSegmentation,
-          representationType
+          hydrateSegmentation
         );
-
-        segmentationService.setActiveSegmentationForToolGroup(segmentationId, toolGroupId);
+        segmentationService.setActiveSegmentationForViewport(segmentationId, viewportId);
       }
 
       segmentationService.addSegment(segmentationId, {
@@ -182,13 +192,6 @@ const commandsModule = ({ servicesManager, commandsManager, extensionManager }: 
         },
       });
       return segmentationId;
-    },
-    setSegmentationActiveForToolGroups: ({ segmentationId }) => {
-      const toolGroupIds = _getMatchedViewportsToolGroupIds();
-
-      toolGroupIds.forEach(toolGroupId => {
-        segmentationService.setActiveSegmentationForToolGroup(segmentationId, toolGroupId);
-      });
     },
     thresholdSegmentationByRectangleROITool: ({ segmentationId, config, segmentIndex }) => {
       const segmentation = csTools.segmentation.state.getSegmentation(segmentationId);
@@ -674,9 +677,6 @@ const commandsModule = ({ servicesManager, commandsManager, extensionManager }: 
     },
     createNewLabelmapFromPT: {
       commandFn: actions.createNewLabelmapFromPT,
-    },
-    setSegmentationActiveForToolGroups: {
-      commandFn: actions.setSegmentationActiveForToolGroups,
     },
     thresholdSegmentationByRectangleROITool: {
       commandFn: actions.thresholdSegmentationByRectangleROITool,

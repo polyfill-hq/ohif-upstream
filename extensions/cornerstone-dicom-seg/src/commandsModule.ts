@@ -102,15 +102,14 @@ const commandsModule = ({
             { label: `Segmentation ${currentSegmentations.length + 1}` }
           );
 
-          const toolGroupId = viewport.viewportOptions.toolGroupId;
-
-          await segmentationService.addSegmentationRepresentationToToolGroup(
-            toolGroupId,
+          await segmentationService.addSegmentationRepresentationToViewport(
+            viewportId,
             segmentationId
           );
 
           // Add only one segment for now
-          segmentationService.addSegment(segmentationId, viewportId, {
+          segmentationService.addSegment(segmentationId, {
+            viewportId,
             segmentIndex: 1,
             properties: {
               label: 'Segment 1',
@@ -159,9 +158,8 @@ const commandsModule = ({
 
           segmentationService.addOrUpdateSegmentation(segmentation);
 
-          const toolGroupId = viewport.viewportOptions.toolGroupId;
-          await segmentationService.addSegmentationRepresentationToToolGroup(
-            toolGroupId,
+          await segmentationService.addSegmentationRepresentationToViewport(
+            viewportId,
             segmentationId
           );
 
@@ -171,7 +169,7 @@ const commandsModule = ({
             }
             segmentationService.addSegment(segmentationId, {
               segmentIndex: segment.segmentIndex,
-              toolGroupId,
+              viewportId,
               properties: {
                 color: segment.color,
                 label: segment.label,
