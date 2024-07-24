@@ -200,7 +200,9 @@ const commandsModule = ({ servicesManager, commandsManager, extensionManager }: 
       const ctDisplaySet = matchDetails.get('ctDisplaySet');
       const ctVolumeId = `${volumeLoaderScheme}:${ctDisplaySet.displaySetInstanceUID}`; // VolumeId with loader id + volume id
 
-      const { volumeId: segVolumeId } = representationData[LABELMAP];
+      const { volumeId: segVolumeId } = representationData[
+        LABELMAP
+      ] as csTools.Types.LabelmapToolOperationDataVolume;
       const { referencedVolumeId } = cs.cache.getVolume(segVolumeId);
 
       const annotationUIDs = _getAnnotationsSelectedByToolNames(
@@ -621,6 +623,11 @@ const commandsModule = ({ servicesManager, commandsManager, extensionManager }: 
     },
     setFusionPTColormap: ({ toolGroupId, colormap }) => {
       const toolGroup = toolGroupService.getToolGroup(toolGroupId);
+
+      if (!toolGroup) {
+        return;
+      }
+
       const { viewportMatchDetails } = hangingProtocolService.getMatchDetails();
 
       const ptDisplaySet = actions.getMatchingPTDisplaySet({

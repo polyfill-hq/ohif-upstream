@@ -110,8 +110,7 @@ const commandsModule = ({
           );
 
           // Add only one segment for now
-          segmentationService.addSegment(segmentationId, {
-            toolGroupId,
+          segmentationService.addSegment(segmentationId, viewportId, {
             segmentIndex: 1,
             properties: {
               label: 'Segment 1',
