@@ -29,23 +29,6 @@ let _store = {
   // }
 };
 
-function wrapSequences(obj) {
-  return Object.keys(obj).reduce(
-    (acc, key) => {
-      if (typeof obj[key] === 'object' && obj[key] !== null) {
-        // Recursively wrap sequences for nested objects
-        acc[key] = wrapSequences(obj[key]);
-      } else {
-        acc[key] = obj[key];
-      }
-      if (key.endsWith('Sequence')) {
-        acc[key] = OHIF.utils.addAccessors(acc[key]);
-      }
-      return acc;
-    },
-    Array.isArray(obj) ? [] : {}
-  );
-}
 const getMetaDataByURL = url => {
   return _store.urls.find(metaData => metaData.url === url);
 };
