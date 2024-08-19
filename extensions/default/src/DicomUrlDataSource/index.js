@@ -9,65 +9,22 @@ const { EVENTS } = DicomMetadataStore;
 
 const metadataProvider = OHIF.classes.MetadataProvider;
 
-const mappings = {
-  studyInstanceUid: 'StudyInstanceUID',
-  patientId: 'PatientID',
-};
-
 let _store = {
   urls: [],
   studyInstanceUIDMap: new Map(), // map of urls to array of study instance UIDs
-  instancesData: [{}],
-  // {
-  //   url: url1
-  //   studies: [Study1, Study2], // if multiple studies
-  // }
-  // {
-  //   url: url2
-  //   studies: [Study1],
-  // }
-  // }
+  instances: [{}],
 };
 
-const getMetaDataByURL = url => {
-  return _store.urls.find(metaData => metaData.url === url);
-};
-
-const findStudies = (key, value) => {
-  let studies = [];
-  _store.urls.map(metaData => {
-    metaData.studies.map(aStudy => {
-      if (aStudy[key] === value) {
-        studies.push(aStudy);
-      }
-    });
-  });
-  return studies;
-};
-
-function createDicomUrlApi(dicomJsonConfig) {
-  // const { wadoRoot } = dicomJsonConfig;
-
+function createDicomUrlApi(dicomUrlConfig) {
   const implementation = {
     initialize: async ({ query, url }) => {
       if (!url) {
         url = query.get('url');
       }
-      let metaData = getMetaDataByURL(url);
-
-      // if we have already cached the data from this specific url
-      // We are only handling one StudyInstanceUID to run; however,
-      // all studies for patientID will be put in the correct tab
-      if (metaData) {
-        return metaData.studies.map(aStudy => {
-          return aStudy.StudyInstanceUID;
-        });
-      }
 
       const response = await fetch(url);
       const data = await response.json();
 
-      //loop through studies to fetch urls in here not server
       let instancesData = [];
 
       data.studies.forEach(study => {
@@ -87,46 +44,43 @@ function createDicomUrlApi(dicomJsonConfig) {
         data.studies.map(study => study.StudyInstanceUID)
       );
 
-      _store.instancesData.push(...instancesData);
+      _store.instances.push(...instancesData);
     },
     query: {
       studies: {
         mapParams: () => {},
         search: async param => {
-          const [key, value] = Object.entries(param)[0];
-          const mappedParam = mappings[key];
+          const studyUIDs = DicomMetadataStore.getStudyInstanceUIDs();
 
-          // todo: should fetch from dicomMetadataStore
-          const studies = findStudies(mappedParam, value);
-
-          return studies.map(aStudy => {
+          return studyUIDs.map(studyUid => {
+            const study = DicomMetadataStore.getStudy(studyUid);
             return {
-              accession: aStudy.AccessionNumber,
-              date: aStudy.StudyDate,
-              description: aStudy.StudyDescription,
-              instances: aStudy.NumInstances,
-              modalities: aStudy.Modalities,
-              mrn: aStudy.PatientID,
-              patientName: aStudy.PatientName,
-              studyInstanceUid: aStudy.StudyInstanceUID,
-              NumInstances: aStudy.NumInstances,
-              time: aStudy.StudyTime,
+              accession: study.AccessionNumber,
+              date: study.StudyDate,
+              description: study.StudyDescription,
+              instances: study.NumInstances,
+              modalities: study.Modalities,
+              mrn: study.PatientID,
+              patientName: study.PatientName,
+              studyInstanceUid: study.StudyInstanceUID,
+              NumInstances: study.NumInstances,
+              time: study.StudyTime,
             };
           });
         },
         processResults: () => {
-          console.warn(' DICOMJson QUERY processResults not implemented');
+          console.warn(' DICOMUrl QUERY processResults not implemented');
         },
       },
       series: {
         // mapParams: mapParams.bind(),
         search: () => {
-          console.warn(' DICOMJson QUERY SERIES SEARCH not implemented');
+          console.warn(' DICOMUrl QUERY SERIES SEARCH not implemented');
         },
       },
       instances: {
         search: () => {
-          console.warn(' DICOMJson QUERY instances SEARCH not implemented');
+          console.warn(' DICOMUrl QUERY instances SEARCH not implemented');
         },
       },
     },
@@ -145,7 +99,7 @@ function createDicomUrlApi(dicomJsonConfig) {
        *    or is already retrieved, or a promise to a URL for such use if a BulkDataURI
        */
       directURL: params => {
-        return getDirectURL(dicomJsonConfig, params);
+        return getDirectURL(dicomUrlConfig, params);
       },
       series: {
         metadata: async ({ StudyInstanceUID, madeInClient = false, customSort } = {}) => {
@@ -153,11 +107,13 @@ function createDicomUrlApi(dicomJsonConfig) {
             throw new Error('Unable to query for SeriesMetadata without StudyInstanceUID');
           }
 
-          const studyInstancesToRetrieve = _store.instancesData.filter(i => i.StudyInstanceUID === StudyInstanceUID);
+          const studyInstancesToRetrieve = _store.instances.filter(
+            i => i.StudyInstanceUID === StudyInstanceUID
+          );
 
-          const filePromises = studyInstancesToRetrieve.map(async instanceData => {
+          const filePromises = studyInstancesToRetrieve.map(async instance => {
             const response = await axios({
-              url: instanceData.instance.url.replace('dicomweb:', ''),
+              url: instance.instance.url.replace('dicomweb:', ''),
               method: 'GET',
               responseType: 'blob',
               headers: {
@@ -166,15 +122,13 @@ function createDicomUrlApi(dicomJsonConfig) {
             });
 
             const blob = response.data;
-            return new File([blob], instanceData.instance.name, { type: 'application/dicom' });
+            return new File([blob], instance.instance.name, { type: 'application/dicom' });
           });
 
-          // Ensure you await the resolution of the promises
           const files = await Promise.all(filePromises);
           await filesToStudies(files);
 
-          const study = DicomMetadataStore.getStudy(StudyInstanceUID, madeInClient);
-
+          const study = DicomMetadataStore.getStudy(StudyInstanceUID);
 
           study.series.forEach(aSeries => {
             const { SeriesInstanceUID } = aSeries;
@@ -211,7 +165,7 @@ function createDicomUrlApi(dicomJsonConfig) {
     },
     store: {
       dicom: () => {
-        console.warn(' DICOMJson store dicom not implemented');
+        console.warn(' DicomUrl store dicom not implemented');
       },
     },
     getImageIdsForDisplaySet(displaySet) {
@@ -230,12 +184,12 @@ function createDicomUrlApi(dicomJsonConfig) {
             const imageId = getImageId({
               instance,
               frame: i,
-              config: dicomJsonConfig,
+              config: dicomUrlConfig,
             });
             imageIds.push(imageId);
           }
         } else {
-          const imageId = getImageId({ instance, config: dicomJsonConfig });
+          const imageId = getImageId({ instance, config: dicomUrlConfig });
           imageIds.push(imageId);
         }
       });
