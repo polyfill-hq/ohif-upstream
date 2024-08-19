@@ -9,6 +9,23 @@ const { EVENTS } = DicomMetadataStore;
 
 const metadataProvider = OHIF.classes.MetadataProvider;
 
+const findStudies = (key, value) => {
+  let studies = [];
+  _store.urls.map(metaData => {
+    metaData.studies.map(aStudy => {
+      if (aStudy[key] === value) {
+        studies.push(aStudy);
+      }
+    });
+  });
+  return studies;
+};
+
+const mappings = {
+  studyInstanceUid: 'StudyInstanceUID',
+  patientId: 'PatientID',
+};
+
 let _store = {
   urls: [],
   studyInstanceUIDMap: new Map(), // map of urls to array of study instance UIDs
@@ -50,21 +67,24 @@ function createDicomUrlApi(dicomUrlConfig) {
       studies: {
         mapParams: () => {},
         search: async param => {
-          const studyUIDs = DicomMetadataStore.getStudyInstanceUIDs();
+          const [key, value] = Object.entries(param)[0];
+          const mappedParam = mappings[key];
 
-          return studyUIDs.map(studyUid => {
-            const study = DicomMetadataStore.getStudy(studyUid);
+          // todo: should fetch from dicomMetadataStore
+          const studies = findStudies(mappedParam, value);
+
+          return studies.map(aStudy => {
             return {
-              accession: study.AccessionNumber,
-              date: study.StudyDate,
-              description: study.StudyDescription,
-              instances: study.NumInstances,
-              modalities: study.Modalities,
-              mrn: study.PatientID,
-              patientName: study.PatientName,
-              studyInstanceUid: study.StudyInstanceUID,
-              NumInstances: study.NumInstances,
-              time: study.StudyTime,
+              accession: aStudy.AccessionNumber,
+              date: aStudy.StudyDate,
+              description: aStudy.StudyDescription,
+              instances: aStudy.NumInstances,
+              modalities: aStudy.Modalities,
+              mrn: aStudy.PatientID,
+              patientName: aStudy.PatientName,
+              studyInstanceUid: aStudy.StudyInstanceUID,
+              NumInstances: aStudy.NumInstances,
+              time: aStudy.StudyTime,
             };
           });
         },
